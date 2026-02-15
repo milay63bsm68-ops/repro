@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Premium Promo</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="promolist.js"></script>
+<script defer src="app.js"></script>
+
+<style>
+/* Body & Centering */
+body{
+  background:#0b1220;
+  color:#e5e7eb;
+  font-family:system-ui,-apple-system;
+  margin:0;
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:0 12px;
+}
+
+/* Container */
+.container{
+  width:100%;
+  max-width:420px;
+}
+
+/* Step Visibility */
+.step{display:none; animation:slide .35s ease}
+.step.active{display:block}
+
+/* Card Style */
+.card{
+  background:#111827;
+  border-radius:18px;
+  padding:22px;
+  margin-bottom:18px;
+  box-shadow:0 10px 25px rgba(0,0,0,.3);
+}
+
+/* Headings */
+h2{
+  margin-bottom:12px;
+  font-size:20px;
+  font-weight:600;
+  text-align:center;
+}
+
+/* Inputs, Select, Textarea, Buttons */
+input,select,textarea,button{
+  width:100%;
+  padding:14px;
+  border-radius:12px;
+  border:none;
+  margin-top:12px;
+  font-size:15px;
+  box-sizing:border-box;
+}
+input,select,textarea{
+  background:#020617;
+  color:#fff;
+  transition:0.3s;
+}
+input:focus,textarea:focus,select:focus{
+  outline:none;
+  border:2px solid #22c55e;
+  background:#0a101d;
+}
+textarea{
+  resize:none;
+  min-height:80px;
+}
+
+/* Buttons */
+button{
+  background:#22c55e;
+  color:#020617;
+  font-weight:700;
+  cursor:pointer;
+  transition:0.3s;
+}
+button:hover{opacity:0.9;}
+button.secondary{
+  background:#1e293b;
+  color:#fff;
+}
+button.back{
+  background:#334155;
+  color:#e5e7eb;
+  margin-top:8px;
+}
+
+/* Payment Method Cards */
+.method{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:12px;
+  padding:16px;
+  border-radius:16px;
+  background:#020617;
+  cursor:pointer;
+  border:2px solid transparent;
+  transition:0.3s;
+  margin-bottom:12px;
+}
+.method.active{
+  border-color:#22c55e;
+  background:#0a101d;
+}
+.method:hover{
+  background:#0a101d;
+}
+
+/* Helper Text */
+.small{font-size:13px;color:#94a3b8}
+.copy{color:#38bdf8;cursor:pointer}
+.error{color:#ef4444}
+.success{color:#22c55e}
+.center{text-align:center}
+
+/* Step Slide Animation */
+@keyframes slide{
+  from{opacity:0;transform:translateY(12px)}
+  to{opacity:1}
+}
+
+/* Loader Overlay */
+.loader-wrap{
+  position:fixed;
+  inset:0;
+  background:rgba(2,6,23,.85);
+  backdrop-filter:blur(6px);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:9999;
+}
+.loader{
+  background:#020617;
+  padding:22px 26px;
+  border-radius:18px;
+  text-align:center;
+  box-shadow:0 20px 40px rgba(0,0,0,.4);
+}
+.spinner{
+  width:38px;
+  height:38px;
+  border:4px solid #1e293b;
+  border-top-color:#22c55e;
+  border-radius:50%;
+  animation:spin 1s linear infinite;
+  margin:0 auto 12px;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loader p{font-size:14px;color:#e5e7eb;}
+.hidden{display:none}
+</style>
+</head>
+
+<body>
+<div class="container">
+
+<!-- STEP 1: Promo ID -->
+<div class="step active" id="step1">
+  <h2>🔑 Promo Verification</h2>
+  <div class="card">
+    <input id="promoId" placeholder="Enter Promo ID (Telegram ID)">
+    <button onclick="verifyPromo()">Verify Promo</button>
+    <p id="promoStatus"></p>
+  </div>
+</div>
+
+<!-- STEP 2: Choose Plan -->
+<div class="step" id="step2">
+  <h2>⭐ Choose Plan</h2>
+  <div class="card">
+    <select id="plan" onchange="updatePrice()">
+      <option value="">Select Premium Plan</option>
+      <option value="7">7 Days – ₦3,500</option>
+      <option value="14">14 Days – ₦7,000</option>
+      <option value="forever">Forever – ₦20,000</option>
+    </select>
+    <p id="priceInfo"></p>
+    <button onclick="nextStep(3)">Continue</button>
+    <button class="back" onclick="prevStep(1)">Back</button>
+  </div>
+</div>
+
+<!-- STEP 3: Choose Payment Method -->
+<div class="step" id="step3">
+  <h2>💳 Choose Payment Method</h2>
+  <div class="card method" onclick="selectMethod('bank')" id="bankMethod">🏦 Bank Transfer</div>
+  <div class="card method" onclick="selectMethod('crypto')" id="cryptoMethod">💎 Crypto (BNB/BTC)</div>
+  <button class="back" onclick="prevStep(2)">Back</button>
+</div>
+
+<!-- STEP 4: Payment Details -->
+<div class="step" id="step4">
+  <h2>💰 Payment Details</h2>
+  <div id="bankDetails" class="card hidden">
+    <b>NGN – Bank Transfer</b><br><br>
+    Account: 9114301708
+    <span class="copy" onclick="copyText('9114301708')">📋</span><br>
+    Opay (PAYCOM)<br>
+    Olatunji Ayomide abdulmalik
+  </div>
+  <div id="cryptoDetails" class="card hidden">
+    <b>USD – Crypto</b><br><br>
+    BNB: 0xbBcc409872bC2441400735624638F3D67DAa7C4C<br>
+    BTC: bc1qxhyddpkgvdc68tj9xk5gf5k2vnxmnfy4xrwwr4
+  </div>
+  <button onclick="nextStep(5)">I Have Paid</button>
+  <button class="back" onclick="prevStep(3)">Back</button>
+</div>
+
+<!-- STEP 5: Upload Proof -->
+<div class="step" id="step5">
+  <h2>📤 Upload Proof & Contact</h2>
+  <div class="card">
+    <input type="file" id="proof" accept="image/*">
+    <textarea id="desc" placeholder="Payment description"></textarea>
+    <input id="whatsapp" placeholder="WhatsApp number">
+    <input id="call" placeholder="Calling number">
+    <button onclick="submitPayment()">Submit Payment</button>
+    <button class="back" onclick="prevStep(4)">Back</button>
+  </div>
+</div>
+
+<!-- STEP 6: Status -->
+<div class="step" id="step6">
+  <h2>✅ Status</h2>
+  <div class="card center">
+    <p id="finalStatus"></p>
+    <a href="https://wa.me/2349114301708?text=Hello%20Moderator%20I%20need%20help" target="_blank">
+      <button class="secondary">Contact Moderator</button>
+    </a>
+  </div>
+</div>
+
+</div>
+
+<!-- Loading Overlay -->
+<div class="loader-wrap" id="loader">
+  <div class="loader">
+    <div class="spinner"></div>
+    <p id="loaderText">Loading…</p>
+  </div>
+</div>
+
+</body>
+</html>
