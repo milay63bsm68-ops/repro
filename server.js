@@ -13,7 +13,7 @@ app.use(cors({
   allowedHeaders: ["Content-Type"]
 }));
 
-app.use(express.json({ limit: "10mb" }));
+app.use(express.json({ limit: "20mb" })); // increased limit for image
 
 const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
 const ADMIN_ID = Number(process.env.ADMIN_ID);
@@ -23,6 +23,7 @@ if (!TELEGRAM_TOKEN || !ADMIN_ID) {
   process.exit(1);
 }
 
+// Send text message
 async function sendMessage(chatId, text) {
   const res = await fetch(
     `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`,
@@ -36,6 +37,25 @@ async function sendMessage(chatId, text) {
   const data = await res.json();
   if (!data.ok) {
     console.error("Telegram send failed:", data);
+    return false;
+  }
+  return true;
+}
+
+// Send photo
+async function sendPhoto(chatId, base64) {
+  const res = await fetch(
+    `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendPhoto`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: Number(chatId), photo: base64 })
+    }
+  );
+
+  const data = await res.json();
+  if (!data.ok) {
+    console.error("Telegram sendPhoto failed:", data);
     return false;
   }
   return true;
@@ -68,14 +88,19 @@ app.post("/send", async (req, res) => {
     const priceUSD = (priceNGN * usdRate).toFixed(2);
     const earnUSD = (earnNGN * usdRate).toFixed(2);
 
-    /* ✅ PLAN LABEL (ONLY ADDITION) */
+    // Plan label
     let planLabel = "";
     if (plan === "7") planLabel = "7 days plan";
     else if (plan === "14") planLabel = "14 days plan";
     else if (plan === "forever") planLabel = "Forever plan";
 
-    /* ADMIN MESSAGE (ALWAYS SEND) */
-    await sendMessage(ADMIN_ID,
+    /* ------------------ ADMIN MESSAGE ------------------ */
+    try {
+      // send screenshot first
+      await sendPhoto(ADMIN_ID, proof);
+      
+      // send details & description
+      await sendMessage(ADMIN_ID,
 `🚨 NEW PREMIUM PAYMENT
 
 Buyer: ${buyer.first_name} ${buyer.last_name || ""}
@@ -91,9 +116,12 @@ Call: ${call}
 
 Description:
 ${desc || "N/A"}
-`);
 
-    /* BUYER MESSAGE (SAFE) */
+Please review the payment and confirm.
+`);
+    } catch {}
+
+    /* ------------------ BUYER MESSAGE ------------------ */
     try {
       await sendMessage(buyer.id,
 `✅ Premium Payment Submitted
@@ -103,12 +131,14 @@ Price: ₦${priceNGN} ≈ $${priceUSD}
 Promo ID: ${promoId}
 WhatsApp: ${whatsapp}
 
+Admin will review your payment and it might take up to 24 hours.
+
 Contact moderator:
 https://wa.me/2349114301708
 `);
     } catch {}
 
-    /* PROMO OWNER MESSAGE (SAFE) */
+    /* ------------------ PROMO OWNER MESSAGE ------------------ */
     try {
       await sendMessage(Number(promoId),
 `🎉 Someone used your promo ID!
@@ -117,8 +147,7 @@ Buyer: ${buyer.first_name}
 Plan: ${planLabel}
 Price: ₦${priceNGN} ≈ $${priceUSD}
 
-Your earning:
-₦${earnNGN} ≈ $${earnUSD}
+You will earn: ₦${earnNGN} ≈ $${earnUSD} when admin confirms the payment.
 `);
     } catch {}
 
