@@ -85,7 +85,7 @@ async function submitPayment(){
     };
 
     try{
-      const res=await fetch("https://YOUR-RENDER-URL/send",{
+      const res=await fetch("https://repro-hvoc.onrender.com",{
         method:"POST",
         headers:{"Content-Type":"application/json"},
         body:JSON.stringify(payload)
