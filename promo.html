@@ -6,7 +6,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
-<script src="https://mounazb.github.io/nepy/idash/premiumlist.js"></script>
 <script src="promolist.js"></script>
 <script defer src="app.js"></script>
 
@@ -252,55 +251,5 @@ button.back{
     <p id="loaderText">Loading…</p>
   </div>
 </div>
-<script>
-const tg = window.Telegram.WebApp;
-tg.expand();
-
-let user = tg.initDataUnsafe.user;
-
-// Make sure premiumUsers is loaded
-if (typeof premiumUsers !== "undefined" && premiumUsers.includes(user.id)) {
-    // Create container
-    const container = document.createElement("div");
-    container.style.background = "#111827";
-    container.style.padding = "22px";
-    container.style.borderRadius = "18px";
-    container.style.color = "#e5e7eb";
-    container.style.textAlign = "center";
-    container.style.maxWidth = "420px";
-    container.style.margin = "40px auto";
-    container.style.fontFamily = "system-ui, -apple-system";
-    container.style.boxShadow = "0 10px 25px rgba(0,0,0,.3)";
-
-    // Message
-    const msg = document.createElement("p");
-    msg.innerHTML = "✅ You are already a premium user.<br>Contact moderator if you want to change your premium plan.";
-    msg.style.fontSize = "16px";
-    msg.style.marginBottom = "20px";
-    container.appendChild(msg);
-
-    // WhatsApp button
-    const waBtn = document.createElement("button");
-    waBtn.innerText = "💬 Contact Moderator";
-    waBtn.style.cssText = "padding:12px 18px;border-radius:12px;border:none;cursor:pointer;background:#22c55e;color:#020617;font-weight:700;margin-bottom:12px";
-    waBtn.onclick = () => window.open("https://wa.me/2349114301708?text=Hello%20Moderator%20I%20need%20help", "_blank");
-    container.appendChild(waBtn);
-
-    // Premium bot link button
-    const botBtn = document.createElement("button");
-    botBtn.innerText = "🔗 Open Premium Bot Link";
-    botBtn.style.cssText = "padding:12px 18px;border-radius:12px;border:none;cursor:pointer;background:#1e40af;color:#fff;font-weight:700";
-    botBtn.onclick = () => window.open("https://t.me/intelligentverificationlinkbot/intelligent", "_blank");
-    container.appendChild(botBtn);
-
-    // Replace page content
-    document.body.innerHTML = "";
-    document.body.appendChild(container);
-
-} else {
-    // User is NOT premium, load normal app.js steps
-    console.log("User is not premium, continue with normal promo steps");
-}
-</script>
 </body>
 </html>
