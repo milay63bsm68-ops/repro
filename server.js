@@ -13,7 +13,7 @@ app.use(cors({
   allowedHeaders: ["Content-Type"]
 }));
 
-app.use(express.json({ limit: "20mb" })); // increased limit for image
+app.use(express.json({ limit: "20mb" })); // Increased limit for large images
 
 const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
 const ADMIN_ID = Number(process.env.ADMIN_ID);
@@ -71,6 +71,7 @@ app.post("/send", async (req, res) => {
       return res.status(400).json({ ok: false, error: "Missing required fields" });
     }
 
+    // Exchange rate
     let usdRate = 0.0025;
     try {
       const r = await fetch("https://api.exchangerate-api.com/v4/latest/NGN");
@@ -78,6 +79,7 @@ app.post("/send", async (req, res) => {
       usdRate = d.rates?.USD || usdRate;
     } catch {}
 
+    // Pricing and earning
     let priceNGN = 0;
     let earnNGN = 0;
 
@@ -96,10 +98,10 @@ app.post("/send", async (req, res) => {
 
     /* ------------------ ADMIN MESSAGE ------------------ */
     try {
-      // send screenshot first
+      // Send screenshot first
       await sendPhoto(ADMIN_ID, proof);
-      
-      // send details & description
+
+      // Then send details and description
       await sendMessage(ADMIN_ID,
 `🚨 NEW PREMIUM PAYMENT
 
@@ -108,7 +110,7 @@ Telegram ID: ${buyer.id}
 
 Plan: ${planLabel}
 Price: ₦${priceNGN} ≈ $${priceUSD}
-Payment: ${method}
+Payment Method: ${method}
 
 Promo ID: ${promoId}
 WhatsApp: ${whatsapp}
