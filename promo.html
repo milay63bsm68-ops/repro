@@ -251,6 +251,60 @@ button.back{
     <p id="loaderText">Loading…</p>
   </div>
 </div>
+<script>
+import { premiumUsers } from "./premiumlist.js";
 
+const tg = window.Telegram.WebApp;
+tg.expand();
+
+let user = tg.initDataUnsafe.user;
+
+// Container for premium message
+const container = document.createElement("div");
+container.style.background = "#111827";
+container.style.padding = "20px";
+container.style.borderRadius = "16px";
+container.style.color = "#e5e7eb";
+container.style.textAlign = "center";
+container.style.maxWidth = "400px";
+container.style.margin = "40px auto";
+container.style.fontFamily = "system-ui, -apple-system";
+
+// Check if user is in premium list
+if (premiumUsers.includes(user.id)) {
+  // Message
+  const msg = document.createElement("p");
+  msg.innerHTML = "✅ You are already a premium user.<br>Contact moderator if you want to change your premium plan.";
+  msg.style.fontSize = "16px";
+  msg.style.marginBottom = "20px";
+  container.appendChild(msg);
+
+  // Copy button for premium link
+  const btn = document.createElement("button");
+  btn.innerText = "📋 Copy Premium Link";
+  btn.style.padding = "12px 18px";
+  btn.style.borderRadius = "12px";
+  btn.style.border = "none";
+  btn.style.cursor = "pointer";
+  btn.style.background = "#22c55e";
+  btn.style.color = "#020617";
+  btn.style.fontWeight = "700";
+  btn.addEventListener("click", () => {
+    const link = "https://t.me/intelligentverificationlinkbot/intelligent";
+    navigator.clipboard.writeText(link);
+    alert("Premium link copied!");
+  });
+
+  container.appendChild(btn);
+
+  // Append to body
+  document.body.innerHTML = ""; // Clear existing content
+  document.body.appendChild(container);
+
+} else {
+  // User is not premium: you can show the regular steps here
+  console.log("User is not premium, show normal promo steps");
+}
+</script>
 </body>
 </html>
