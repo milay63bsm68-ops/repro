@@ -2,7 +2,6 @@ import express from "express";
 import fetch from "node-fetch";
 import cors from "cors";
 import dotenv from "dotenv";
-import FormData from "form-data";
 
 dotenv.config();
 
@@ -50,19 +49,19 @@ async function sendMessage(chatId, text) {
   }
 }
 
-// Send photo via multipart/form-data
+// Send photo using Node 18+ native FormData & Blob
 async function sendPhoto(chatId, base64) {
   try {
     // Convert Base64 to Buffer
     const buffer = Buffer.from(base64.split(",")[1], "base64");
 
-    const form = new FormData();
-    form.append("chat_id", chatId);
-    form.append("photo", buffer, { filename: "proof.png" });
+    const formData = new FormData();
+    formData.append("chat_id", chatId);
+    formData.append("photo", new Blob([buffer]), "proof.png"); // Blob supported in Node 18+
 
     const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendPhoto`, {
       method: "POST",
-      body: form
+      body: formData
     });
 
     const data = await res.json();
