@@ -134,14 +134,16 @@ async function submitPayment() {
       hideLoader();
       nextStep(6);
 
-      finalStatus.innerHTML = d.ok
-        ? "<span class='success'>Payment submitted successfully</span>"
-        : "<span class='error'>" + d.error + "</span>";
+      if (d.ok) {
+        finalStatus.innerHTML = "<span class='success'>Payment submitted successfully ✅</span>";
+      } else {
+        finalStatus.innerHTML = `<span class='error'>Failed to submit payment: ${d.error || "Unknown error"}</span>`;
+      }
 
     } catch (e) {
       hideLoader();
       nextStep(6);
-      finalStatus.innerHTML = "<span class='error'>Network error, try again</span>";
+      finalStatus.innerHTML = "<span class='error'>Network error, please try again 🌐</span>";
     }
   };
 
