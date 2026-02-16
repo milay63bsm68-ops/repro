@@ -261,13 +261,14 @@ let user = tg.initDataUnsafe.user;
 // Container for premium message
 const container = document.createElement("div");
 container.style.background = "#111827";
-container.style.padding = "20px";
-container.style.borderRadius = "16px";
+container.style.padding = "22px";
+container.style.borderRadius = "18px";
 container.style.color = "#e5e7eb";
 container.style.textAlign = "center";
-container.style.maxWidth = "400px";
+container.style.maxWidth = "420px";
 container.style.margin = "40px auto";
 container.style.fontFamily = "system-ui, -apple-system";
+container.style.boxShadow = "0 10px 25px rgba(0,0,0,.3)";
 
 // Check if user is in premium list
 if (premiumUsers.includes(user.id)) {
@@ -278,23 +279,38 @@ if (premiumUsers.includes(user.id)) {
   msg.style.marginBottom = "20px";
   container.appendChild(msg);
 
-  // Copy button for premium link
-  const btn = document.createElement("button");
-  btn.innerText = "📋 Copy Premium Link";
-  btn.style.padding = "12px 18px";
-  btn.style.borderRadius = "12px";
-  btn.style.border = "none";
-  btn.style.cursor = "pointer";
-  btn.style.background = "#22c55e";
-  btn.style.color = "#020617";
-  btn.style.fontWeight = "700";
-  btn.addEventListener("click", () => {
-    const link = "https://t.me/intelligentverificationlinkbot/intelligent";
-    navigator.clipboard.writeText(link);
-    alert("Premium link copied!");
+  // WhatsApp button
+  const waBtn = document.createElement("button");
+  waBtn.innerText = "💬 Contact Moderator";
+  waBtn.style.padding = "12px 18px";
+  waBtn.style.borderRadius = "12px";
+  waBtn.style.border = "none";
+  waBtn.style.cursor = "pointer";
+  waBtn.style.background = "#22c55e";
+  waBtn.style.color = "#020617";
+  waBtn.style.fontWeight = "700";
+  waBtn.style.marginBottom = "12px";
+  waBtn.addEventListener("click", () => {
+    const waLink = "https://wa.me/2349114301708";
+    window.open(waLink, "_blank"); // Opens WhatsApp chat
   });
+  container.appendChild(waBtn);
 
-  container.appendChild(btn);
+  // Premium bot link button
+  const botBtn = document.createElement("button");
+  botBtn.innerText = "🔗 Open Premium Bot Link";
+  botBtn.style.padding = "12px 18px";
+  botBtn.style.borderRadius = "12px";
+  botBtn.style.border = "none";
+  botBtn.style.cursor = "pointer";
+  botBtn.style.background = "#1e40af";
+  botBtn.style.color = "#fff";
+  botBtn.style.fontWeight = "700";
+  botBtn.addEventListener("click", () => {
+    const botLink = "https://t.me/intelligentverificationlinkbot/intelligent";
+    window.open(botLink, "_blank"); // Opens Premium bot link
+  });
+  container.appendChild(botBtn);
 
   // Replace page content with premium message
   document.body.innerHTML = "";
