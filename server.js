@@ -2,6 +2,7 @@ import express from "express";
 import fetch from "node-fetch";
 import cors from "cors";
 import dotenv from "dotenv";
+import FormData from "form-data";
 
 dotenv.config();
 
@@ -13,7 +14,7 @@ app.use(cors({
   allowedHeaders: ["Content-Type"]
 }));
 
-app.use(express.json({ limit: "20mb" })); // Increased limit for large images
+app.use(express.json({ limit: "20mb" })); // Support large images
 
 const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
 const ADMIN_ID = Number(process.env.ADMIN_ID);
@@ -23,43 +24,60 @@ if (!TELEGRAM_TOKEN || !ADMIN_ID) {
   process.exit(1);
 }
 
+/* ------------------ TELEGRAM FUNCTIONS ------------------ */
+
 // Send text message
 async function sendMessage(chatId, text) {
-  const res = await fetch(
-    `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: Number(chatId), text })
-    }
-  );
+  try {
+    const res = await fetch(
+      `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chat_id: Number(chatId), text })
+      }
+    );
 
-  const data = await res.json();
-  if (!data.ok) {
-    console.error("Telegram send failed:", data);
+    const data = await res.json();
+    if (!data.ok) {
+      console.error("Telegram sendMessage failed:", data);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("sendMessage error:", err);
     return false;
   }
-  return true;
 }
 
-// Send photo
+// Send photo via multipart/form-data
 async function sendPhoto(chatId, base64) {
-  const res = await fetch(
-    `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendPhoto`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: Number(chatId), photo: base64 })
-    }
-  );
+  try {
+    // Convert Base64 to Buffer
+    const buffer = Buffer.from(base64.split(",")[1], "base64");
 
-  const data = await res.json();
-  if (!data.ok) {
-    console.error("Telegram sendPhoto failed:", data);
+    const form = new FormData();
+    form.append("chat_id", chatId);
+    form.append("photo", buffer, { filename: "proof.png" });
+
+    const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendPhoto`, {
+      method: "POST",
+      body: form
+    });
+
+    const data = await res.json();
+    if (!data.ok) {
+      console.error("Telegram sendPhoto failed:", data);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.error("sendPhoto error:", err);
     return false;
   }
-  return true;
 }
+
+/* ------------------ API ROUTES ------------------ */
 
 app.post("/send", async (req, res) => {
   try {
@@ -99,7 +117,8 @@ app.post("/send", async (req, res) => {
     /* ------------------ ADMIN MESSAGE ------------------ */
     try {
       // Send screenshot first
-      await sendPhoto(ADMIN_ID, proof);
+      const photoOk = await sendPhoto(ADMIN_ID, proof);
+      if (!photoOk) console.error("❌ Failed to send proof image to admin");
 
       // Then send details and description
       await sendMessage(ADMIN_ID,
@@ -121,7 +140,9 @@ ${desc || "N/A"}
 
 Please review the payment and confirm.
 `);
-    } catch {}
+    } catch (err) {
+      console.error("Admin message error:", err);
+    }
 
     /* ------------------ BUYER MESSAGE ------------------ */
     try {
@@ -138,7 +159,9 @@ Admin will review your payment and it might take up to 24 hours.
 Contact moderator:
 https://wa.me/2349114301708
 `);
-    } catch {}
+    } catch (err) {
+      console.error("Buyer message error:", err);
+    }
 
     /* ------------------ PROMO OWNER MESSAGE ------------------ */
     try {
@@ -151,7 +174,9 @@ Price: ₦${priceNGN} ≈ $${priceUSD}
 
 You will earn: ₦${earnNGN} ≈ $${earnUSD} when admin confirms the payment.
 `);
-    } catch {}
+    } catch (err) {
+      console.error("Promo owner message error:", err);
+    }
 
     res.json({ ok: true });
 
@@ -160,6 +185,8 @@ You will earn: ₦${earnNGN} ≈ $${earnUSD} when admin confirms the payment.
     res.status(500).json({ ok: false, error: "Server error" });
   }
 });
+
+/* ------------------ START SERVER ------------------ */
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
