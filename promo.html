@@ -252,8 +252,6 @@ button.back{
   </div>
 </div>
 <script>
-import { premiumUsers } from "https://mounazb.github.io/nepy/idash/premiumlist.js";
-
 const tg = window.Telegram.WebApp;
 tg.expand();
 
@@ -297,12 +295,12 @@ if (premiumUsers.includes(user.id)) {
 
   container.appendChild(btn);
 
-  // Append to body
-  document.body.innerHTML = ""; // Clear existing content
+  // Replace page content with premium message
+  document.body.innerHTML = "";
   document.body.appendChild(container);
 
 } else {
-  // User is not premium: you can show the regular steps here
+  // User is not premium: continue with normal steps
   console.log("User is not premium, show normal promo steps");
 }
 </script>
