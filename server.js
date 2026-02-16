@@ -68,6 +68,12 @@ app.post("/send", async (req, res) => {
     const priceUSD = (priceNGN * usdRate).toFixed(2);
     const earnUSD = (earnNGN * usdRate).toFixed(2);
 
+    /* ✅ PLAN LABEL (ONLY ADDITION) */
+    let planLabel = "";
+    if (plan === "7") planLabel = "7 days plan";
+    else if (plan === "14") planLabel = "14 days plan";
+    else if (plan === "forever") planLabel = "Forever plan";
+
     /* ADMIN MESSAGE (ALWAYS SEND) */
     await sendMessage(ADMIN_ID,
 `🚨 NEW PREMIUM PAYMENT
@@ -75,7 +81,7 @@ app.post("/send", async (req, res) => {
 Buyer: ${buyer.first_name} ${buyer.last_name || ""}
 Telegram ID: ${buyer.id}
 
-Plan: ${plan}
+Plan: ${planLabel}
 Price: ₦${priceNGN} ≈ $${priceUSD}
 Payment: ${method}
 
@@ -92,7 +98,7 @@ ${desc || "N/A"}
       await sendMessage(buyer.id,
 `✅ Premium Payment Submitted
 
-Plan: ${plan}
+Plan: ${planLabel}
 Price: ₦${priceNGN} ≈ $${priceUSD}
 Promo ID: ${promoId}
 WhatsApp: ${whatsapp}
@@ -108,7 +114,7 @@ https://wa.me/2349114301708
 `🎉 Someone used your promo ID!
 
 Buyer: ${buyer.first_name}
-Plan: ${plan}
+Plan: ${planLabel}
 Price: ₦${priceNGN} ≈ $${priceUSD}
 
 Your earning:
