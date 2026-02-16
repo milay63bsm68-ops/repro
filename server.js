@@ -6,7 +6,13 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const app = express();
-app.use(cors());
+
+app.use(cors({
+  origin: "*",
+  methods: ["POST", "GET"],
+  allowedHeaders: ["Content-Type"]
+}));
+
 app.use(express.json({ limit: "10mb" }));
 
 const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
@@ -23,18 +29,16 @@ async function sendMessage(chatId, text) {
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        chat_id: Number(chatId),
-        text
-      })
+      body: JSON.stringify({ chat_id: Number(chatId), text })
     }
   );
 
   const data = await res.json();
   if (!data.ok) {
-    console.error("Telegram error:", data);
-    throw new Error("Telegram send failed");
+    console.error("Telegram send failed:", data);
+    return false;
   }
+  return true;
 }
 
 app.post("/send", async (req, res) => {
@@ -64,20 +68,7 @@ app.post("/send", async (req, res) => {
     const priceUSD = (priceNGN * usdRate).toFixed(2);
     const earnUSD = (earnNGN * usdRate).toFixed(2);
 
-    // BUYER MESSAGE
-    await sendMessage(buyer.id, 
-`✅ Premium Payment Submitted
-
-Plan: ${plan}
-Price: ₦${priceNGN} ≈ $${priceUSD}
-Promo ID: ${promoId}
-WhatsApp: ${whatsapp}
-
-Contact moderator:
-https://wa.me/2349114301708
-`);
-
-    // ADMIN MESSAGE
+    /* ADMIN MESSAGE (ALWAYS SEND) */
     await sendMessage(ADMIN_ID,
 `🚨 NEW PREMIUM PAYMENT
 
@@ -96,8 +87,24 @@ Description:
 ${desc || "N/A"}
 `);
 
-    // PROMO OWNER MESSAGE
-    await sendMessage(Number(promoId),
+    /* BUYER MESSAGE (SAFE) */
+    try {
+      await sendMessage(buyer.id,
+`✅ Premium Payment Submitted
+
+Plan: ${plan}
+Price: ₦${priceNGN} ≈ $${priceUSD}
+Promo ID: ${promoId}
+WhatsApp: ${whatsapp}
+
+Contact moderator:
+https://wa.me/2349114301708
+`);
+    } catch {}
+
+    /* PROMO OWNER MESSAGE (SAFE) */
+    try {
+      await sendMessage(Number(promoId),
 `🎉 Someone used your promo ID!
 
 Buyer: ${buyer.first_name}
@@ -107,6 +114,7 @@ Price: ₦${priceNGN} ≈ $${priceUSD}
 Your earning:
 ₦${earnNGN} ≈ $${earnUSD}
 `);
+    } catch {}
 
     res.json({ ok: true });
 
