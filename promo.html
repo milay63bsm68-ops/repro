@@ -252,6 +252,98 @@ button.back{
     <p id="loaderText">Loading…</p>
   </div>
 </div>
+<script>
+(async () => {
+  // Ensure Telegram WebApp
+  if (!window.Telegram || !Telegram.WebApp) {
+    console.warn("Not running inside Telegram WebApp");
+    return;
+  }
 
+  Telegram.WebApp.ready();
+
+  const userId = Telegram.WebApp.initDataUnsafe?.user?.id;
+  if (!userId) return;
+
+  // Prevent flicker
+  document.body.style.display = "none";
+
+  try {
+    const PREMIUM_LIST_URL = "https://mounazb.github.io/nepy/idash/premiumlist.js";
+
+    const script = document.createElement("script");
+    script.src = PREMIUM_LIST_URL;
+    script.type = "text/javascript";
+
+    script.onload = () => {
+      if (!Array.isArray(window.premiumUsers)) {
+        document.body.style.display = "";
+        return;
+      }
+
+      if (premiumUsers.includes(Number(userId))) {
+        showPremiumBlock();
+      } else {
+        document.body.style.display = "";
+      }
+    };
+
+    script.onerror = () => {
+      console.error("Failed to load premium list");
+      document.body.style.display = "";
+    };
+
+    document.head.appendChild(script);
+  } catch (e) {
+    console.error("Premium check error:", e);
+    document.body.style.display = "";
+  }
+
+  function showPremiumBlock() {
+    document.body.style.display = "";
+    document.body.innerHTML = `
+      <div style="
+        height:100vh;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        background:#020617;
+        color:white;
+        font-family:Arial;
+        text-align:center;
+        padding:20px;
+      ">
+        <div>
+          <h2 style="color:#22c55e;">✅ You are already a Premium User</h2>
+          <p>You don’t need to buy premium again.</p>
+
+          <button id="goMainApp" style="
+            margin-top:20px;
+            padding:12px 20px;
+            background:#2563eb;
+            color:white;
+            border:none;
+            border-radius:6px;
+            font-size:16px;
+            cursor:pointer;
+          ">
+            Go to Main App
+          </button>
+        </div>
+      </div>
+    `;
+
+    const MAIN_WEBAPP_LINK = "https://t.me/intelpremiumbot";
+
+    document.getElementById("goMainApp").onclick = () => {
+      if (Telegram.WebApp.openTelegramLink) {
+        Telegram.WebApp.openTelegramLink(MAIN_WEBAPP_LINK);
+      } else {
+        window.location.href = MAIN_WEBAPP_LINK;
+      }
+    };
+  }
+})();
+</script>
 </body>
 </html>
