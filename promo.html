@@ -254,7 +254,6 @@ button.back{
 </div>
 <script>
 (async () => {
-  // Ensure Telegram WebApp
   if (!window.Telegram || !Telegram.WebApp) {
     console.warn("Not running inside Telegram WebApp");
     return;
@@ -265,39 +264,36 @@ button.back{
   const userId = Telegram.WebApp.initDataUnsafe?.user?.id;
   if (!userId) return;
 
-  // Prevent flicker
+  // Hide page to prevent flicker
   document.body.style.display = "none";
 
-  try {
-    const PREMIUM_LIST_URL = "https://mounazb.github.io/nepy/idash/premiumlist.js";
+  const PREMIUM_LIST_URL = "https://mounazb.github.io/nepy/idash/premiumlist.js";
 
-    const script = document.createElement("script");
-    script.src = PREMIUM_LIST_URL;
-    script.type = "text/javascript";
+  const script = document.createElement("script");
+  script.src = PREMIUM_LIST_URL;
+  script.type = "text/javascript";
 
-    script.onload = () => {
-      if (!Array.isArray(window.premiumUsers)) {
-        document.body.style.display = "";
-        return;
-      }
-
-      if (premiumUsers.includes(Number(userId))) {
-        showPremiumBlock();
-      } else {
-        document.body.style.display = "";
-      }
-    };
-
-    script.onerror = () => {
-      console.error("Failed to load premium list");
+  script.onload = () => {
+    // ✅ DO NOT use window.premiumUsers
+    if (typeof premiumUsers === "undefined" || !Array.isArray(premiumUsers)) {
+      console.error("premiumUsers not found");
       document.body.style.display = "";
-    };
+      return;
+    }
 
-    document.head.appendChild(script);
-  } catch (e) {
-    console.error("Premium check error:", e);
+    if (premiumUsers.includes(Number(userId))) {
+      showPremiumBlock();
+    } else {
+      document.body.style.display = "";
+    }
+  };
+
+  script.onerror = () => {
+    console.error("Failed to load premium list");
     document.body.style.display = "";
-  }
+  };
+
+  document.head.appendChild(script);
 
   function showPremiumBlock() {
     document.body.style.display = "";
@@ -336,11 +332,9 @@ button.back{
     const MAIN_WEBAPP_LINK = "https://t.me/intelpremiumbot";
 
     document.getElementById("goMainApp").onclick = () => {
-      if (Telegram.WebApp.openTelegramLink) {
-        Telegram.WebApp.openTelegramLink(MAIN_WEBAPP_LINK);
-      } else {
-        window.location.href = MAIN_WEBAPP_LINK;
-      }
+      Telegram.WebApp.openTelegramLink
+        ? Telegram.WebApp.openTelegramLink(MAIN_WEBAPP_LINK)
+        : (window.location.href = MAIN_WEBAPP_LINK);
     };
   }
 })();
