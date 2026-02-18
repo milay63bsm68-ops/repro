@@ -115,12 +115,8 @@ app.post("/send", async (req, res) => {
 
     /* ------------------ ADMIN MESSAGE ------------------ */
     try {
-      // Send screenshot first
-      const photoOk = await sendPhoto(ADMIN_ID, proof);
-      if (!photoOk) console.error("❌ Failed to send proof image to admin");
-
-      // Then send details and description
-      await sendMessage(ADMIN_ID,
+      // Send photo with text together using caption
+      const adminText = 
 `🚨 NEW PREMIUM PAYMENT
 
 Buyer: ${buyer.first_name} ${buyer.last_name || ""}
@@ -138,7 +134,22 @@ Description:
 ${desc || "N/A"}
 
 Please review the payment and confirm.
-`);
+`;
+
+      const buffer = Buffer.from(proof.split(",")[1], "base64");
+      const formData = new FormData();
+      formData.append("chat_id", ADMIN_ID);
+      formData.append("photo", new Blob([buffer]), "proof.png");
+      formData.append("caption", adminText); // <-- caption combines text with image
+
+      const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendPhoto`, {
+        method: "POST",
+        body: formData
+      });
+
+      const data = await response.json();
+      if (!data.ok) console.error("Telegram sendPhoto with caption failed:", data);
+
     } catch (err) {
       console.error("Admin message error:", err);
     }
