@@ -1,191 +1,154 @@
 import express from "express";
 import fetch from "node-fetch";
-import cors from "cors";
+import bodyParser from "body-parser";
 import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
 
 dotenv.config();
 
 const app = express();
+app.use(bodyParser.json());
 
-app.use(cors({
-  origin: "*",
-  methods: ["POST", "GET"],
-  allowedHeaders: ["Content-Type"]
-}));
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-app.use(express.json({ limit: "20mb" })); // Support large images
+const {
+  GITHUB_TOKEN,
+  GITHUB_REPO,
+  GITHUB_FILE_PATH,
+  TELEGRAM_BOT_TOKEN,
+  ADMIN_ID,
+  ADMIN_PASSWORD
+} = process.env;
 
-const TELEGRAM_TOKEN = process.env.TELEGRAM_TOKEN;
-const ADMIN_ID = Number(process.env.ADMIN_ID);
-
-if (!TELEGRAM_TOKEN || !ADMIN_ID) {
-  console.error("❌ Missing TELEGRAM_TOKEN or ADMIN_ID");
-  process.exit(1);
+// Function to send Telegram messages
+async function sendTelegramMessage(chatId, text) {
+  const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+  await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ chat_id: chatId, text })
+  });
 }
 
-/* ------------------ TELEGRAM FUNCTIONS ------------------ */
-
-// Send text message
-async function sendMessage(chatId, text) {
-  try {
-    const res = await fetch(
-      `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chat_id: Number(chatId), text })
-      }
-    );
-
-    const data = await res.json();
-    if (!data.ok) {
-      console.error("Telegram sendMessage failed:", data);
-      return false;
-    }
-    return true;
-  } catch (err) {
-    console.error("sendMessage error:", err);
-    return false;
-  }
+// Get the file content from GitHub
+async function getGitHubFile() {
+  const url = `https://api.github.com/repos/${GITHUB_REPO}/contents/${GITHUB_FILE_PATH}`;
+  const res = await fetch(url, {
+    headers: { Authorization: `token ${GITHUB_TOKEN}` }
+  });
+  const data = await res.json();
+  const content = Buffer.from(data.content, "base64").toString("utf-8");
+  return { content, sha: data.sha };
 }
 
-// Send photo using Node 18+ native FormData & Blob
-async function sendPhoto(chatId, base64) {
-  try {
-    // Convert Base64 to Buffer
-    const buffer = Buffer.from(base64.split(",")[1], "base64");
-
-    const formData = new FormData();
-    formData.append("chat_id", chatId);
-    formData.append("photo", new Blob([buffer]), "proof.png"); // Blob supported in Node 18+
-
-    const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendPhoto`, {
-      method: "POST",
-      body: formData
-    });
-
-    const data = await res.json();
-    if (!data.ok) {
-      console.error("Telegram sendPhoto failed:", data);
-      return false;
-    }
-    return true;
-  } catch (err) {
-    console.error("sendPhoto error:", err);
-    return false;
-  }
+// Update the file in GitHub
+async function updateGitHubFile(newContent, sha) {
+  const url = `https://api.github.com/repos/${GITHUB_REPO}/contents/${GITHUB_FILE_PATH}`;
+  const res = await fetch(url, {
+    method: "PUT",
+    headers: { 
+      "Authorization": `token ${GITHUB_TOKEN}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      message: `Update promo list`,
+      content: Buffer.from(newContent).toString("base64"),
+      sha
+    })
+  });
+  return res.json();
 }
 
-/* ------------------ API ROUTES ------------------ */
+// Serve admin.html
+app.get("/admin.html", (req, res) => {
+  res.sendFile(path.join(__dirname, "admin.html"));
+});
 
-app.post("/send", async (req, res) => {
+// Admin route to add a promo ID
+app.post("/admin/add-promo", async (req, res) => {
+  const { promoId, password } = req.body;
+
+  if (!password || password !== ADMIN_PASSWORD)
+    return res.status(403).send("Invalid admin password");
+
+  if (!promoId) return res.status(400).send("Promo ID is required");
+  const trimmedId = promoId.trim();
+
+  if (!/^\d+$/.test(trimmedId))
+    return res.status(400).send("Promo ID must be numeric and contain no spaces");
+
   try {
-    console.log("📥 Incoming payment:", req.body);
+    const { content, sha } = await getGitHubFile();
 
-    const { buyer, promoId, plan, method, proof, whatsapp, call, desc } = req.body;
+    // Extract current IDs
+    const ids = content
+      .replace(/const PROMO_LIST = \[|\];/g, '')
+      .split(',')
+      .map(id => id.trim().replace(/"/g, ''))
+      .filter(id => id);
 
-    if (!buyer || !promoId || !plan || !method || !proof || !whatsapp || !call) {
-      return res.status(400).json({ ok: false, error: "Missing required fields" });
-    }
+    if (ids.includes(trimmedId)) return res.status(400).send("Promo already exists");
 
-    // Exchange rate
-    let usdRate = 0.0025;
-    try {
-      const r = await fetch("https://api.exchangerate-api.com/v4/latest/NGN");
-      const d = await r.json();
-      usdRate = d.rates?.USD || usdRate;
-    } catch {}
+    ids.push(trimmedId);
 
-    // Pricing and earning
-    let priceNGN = 0;
-    let earnNGN = 0;
+    // Rebuild the array cleanly
+    const newContent = `const PROMO_LIST = [\n  ${ids.map(id => `"${id}"`).join(',\n  ')}\n];`;
 
-    if (plan === "7") { priceNGN = 3500; earnNGN = 1000; }
-    if (plan === "14") { priceNGN = 7000; earnNGN = 2000; }
-    if (plan === "forever") { priceNGN = 20000; earnNGN = 5000; }
+    await updateGitHubFile(newContent, sha);
 
-    const priceUSD = (priceNGN * usdRate).toFixed(2);
-    const earnUSD = (earnNGN * usdRate).toFixed(2);
+    await sendTelegramMessage(ADMIN_ID, `New promo added: ${trimmedId}`);
+    await sendTelegramMessage(trimmedId, `Your promo ID has been added successfully.`);
 
-    // Plan label
-    let planLabel = "";
-    if (plan === "7") planLabel = "7 days plan";
-    else if (plan === "14") planLabel = "14 days plan";
-    else if (plan === "forever") planLabel = "Forever plan";
-
-    /* ------------------ ADMIN MESSAGE ------------------ */
-    try {
-      // Send screenshot first
-      const photoOk = await sendPhoto(ADMIN_ID, proof);
-      if (!photoOk) console.error("❌ Failed to send proof image to admin");
-
-      // Then send details and description
-      await sendMessage(ADMIN_ID,
-`🚨 NEW PREMIUM PAYMENT
-
-Buyer: ${buyer.first_name} ${buyer.last_name || ""}
-Telegram ID: ${buyer.id}
-
-Plan: ${planLabel}
-Price: ₦${priceNGN} ≈ $${priceUSD}
-Payment Method: ${method}
-
-Promo ID: ${promoId}
-WhatsApp: ${whatsapp}
-Call: ${call}
-
-Description:
-${desc || "N/A"}
-
-Please review the payment and confirm.
-`);
-    } catch (err) {
-      console.error("Admin message error:", err);
-    }
-
-    /* ------------------ BUYER MESSAGE ------------------ */
-    try {
-      await sendMessage(buyer.id,
-`✅ Premium Payment Submitted
-
-Plan: ${planLabel}
-Price: ₦${priceNGN} ≈ $${priceUSD}
-Promo ID: ${promoId}
-WhatsApp: ${whatsapp}
-
-Admin will review your payment and it might take up to 24 hours.
-
-Contact moderator:
-https://wa.me/2349114301708
-`);
-    } catch (err) {
-      console.error("Buyer message error:", err);
-    }
-
-    /* ------------------ PROMO OWNER MESSAGE ------------------ */
-    try {
-      await sendMessage(Number(promoId),
-`🎉 Someone used your promo ID!
-
-Buyer: ${buyer.first_name}
-Plan: ${planLabel}
-Price: ₦${priceNGN} ≈ $${priceUSD}
-
-You will earn: ₦${earnNGN} ≈ $${earnUSD} when admin confirms the payment.
-`);
-    } catch (err) {
-      console.error("Promo owner message error:", err);
-    }
-
-    res.json({ ok: true });
-
+    res.send("Promo added successfully");
   } catch (err) {
-    console.error("❌ Server error:", err);
-    res.status(500).json({ ok: false, error: "Server error" });
+    console.error(err);
+    res.status(500).send("Error updating promo list");
   }
 });
 
-/* ------------------ START SERVER ------------------ */
+// Admin route to remove a promo ID
+app.post("/admin/remove-promo", async (req, res) => {
+  const { promoId, password } = req.body;
+
+  if (!password || password !== ADMIN_PASSWORD)
+    return res.status(403).send("Invalid admin password");
+
+  if (!promoId) return res.status(400).send("Promo ID is required");
+  const trimmedId = promoId.trim();
+
+  if (!/^\d+$/.test(trimmedId))
+    return res.status(400).send("Promo ID must be numeric and contain no spaces");
+
+  try {
+    const { content, sha } = await getGitHubFile();
+
+    // Extract current IDs
+    let ids = content
+      .replace(/const PROMO_LIST = \[|\];/g, '')
+      .split(',')
+      .map(id => id.trim().replace(/"/g, ''))
+      .filter(id => id);
+
+    if (!ids.includes(trimmedId)) return res.status(400).send("Promo ID not found");
+
+    ids = ids.filter(id => id !== trimmedId);
+
+    // Rebuild the array cleanly
+    const newContent = `const PROMO_LIST = [\n  ${ids.map(id => `"${id}"`).join(',\n  ')}\n];`;
+
+    await updateGitHubFile(newContent, sha);
+
+    await sendTelegramMessage(ADMIN_ID, `Promo removed: ${trimmedId}`);
+    await sendTelegramMessage(trimmedId, `Your promo ID has been removed.`);
+
+    res.send("Promo removed successfully");
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error updating promo list");
+  }
+});
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
