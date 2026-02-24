@@ -124,7 +124,7 @@ async function submitPayment() {
     };
 
     try {
-      const res = await fetch("https://repro-hvoc.onrender.com/send", {
+      const res = await fetch("https://repro-1-rxqj.onrender.com/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
